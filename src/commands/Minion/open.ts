@@ -73,6 +73,7 @@ export default class extends BotCommand {
 	}
 
 	async run(msg: KlasaMessage, [quantity, name]: [number, string | undefined]) {
+		await msg.author.settings.sync(true);
 		if (!name && msg.flagArgs.any === undefined) {
 			return msg.channel.send(await this.showAvailable(msg));
 		}
@@ -86,14 +87,12 @@ export default class extends BotCommand {
 		}
 
 		if (msg.flagArgs.all !== undefined && name !== undefined) {
-			return this.all(msg, name);
+			return this.openAll(msg, name);
 		}
 
 		if (msg.flagArgs.any !== undefined) {
 			return this.any(msg);
 		}
-
-		await msg.author.settings.sync(true);
 
 		const clue = ClueTiers.find(_tier => _tier.name.toLowerCase() === name!.toLowerCase());
 		if (clue) {
@@ -108,62 +107,25 @@ export default class extends BotCommand {
 		return this.botOpenablesOpen(msg, quantity, name!);
 	}
 
-	async all(msg: KlasaMessage, name: string) {
-		const userBank = msg.author.bank();
-		let item = name;
-		const clue = ClueTiers.find(_tier => _tier.name.toLowerCase() === item.toLowerCase());
-		if (clue && userBank.has(clue.id)) {
-			return this.clueOpen(msg, userBank.amount(clue.id), clue);
-		}
-		const osjsOpenable = Openables.find(openable => openable.aliases.some(alias => stringMatches(alias, item)));
-		if (osjsOpenable && userBank.has(osjsOpenable.id)) {
-			return this.osjsOpenablesOpen(msg, userBank.amount(osjsOpenable.id), osjsOpenable);
-		}
-		const itemID = Items.get(item)?.id;
-		if (itemID && userBank.has(itemID)) {
-			const itemName = itemNameFromID(itemID);
-
-			if (itemName === undefined) {
-				return msg.channel.send(`${itemID} has no name`);
-			}
-			return this.botOpenablesOpen(msg, userBank.amount(itemID), itemName);
-		}
-	}
-
 	async any(msg: KlasaMessage) {
 		const userBank = msg.author.bank();
-
 		for (const item of allOpenablesNames) {
-			const clue = ClueTiers.find(_tier => _tier.name.toLowerCase() === item.toLowerCase());
-			if (clue && userBank.has(clue.id)) {
-				return this.clueOpen(msg, userBank.amount(clue.id), clue);
-			}
-			const osjsOpenable = Openables.find(openable => openable.aliases.some(alias => stringMatches(alias, item)));
-			if (osjsOpenable && userBank.has(osjsOpenable.id)) {
-				return this.osjsOpenablesOpen(msg, userBank.amount(osjsOpenable.id), osjsOpenable);
-			}
-			const itemID = Items.get(item)?.id;
+			let itemID = Items.get(item)?.id;
 			if (itemID && userBank.has(itemID)) {
-				const itemName = itemNameFromID(itemID);
-
-				if (itemName === undefined) {
-					return msg.channel.send(`${itemID} has no name`);
-				}
-				return this.botOpenablesOpen(msg, userBank.amount(itemID), itemName);
+				return this.openAll(msg, item);
 			}
 		}
 		return msg.channel.send('You have no openable items.');
 	}
 
-	async clue(msg: KlasaMessage, name: string) {
+	async openAll(msg: KlasaMessage, item: string) {
 		const userBank = msg.author.bank();
-		let item = name;
 		const clue = ClueTiers.find(_tier => _tier.name.toLowerCase() === item.toLowerCase());
-		if (clue && userBank.has(clue.id)) {
+		if (clue) {
 			return this.clueOpen(msg, userBank.amount(clue.id), clue);
 		}
 		const osjsOpenable = Openables.find(openable => openable.aliases.some(alias => stringMatches(alias, item)));
-		if (osjsOpenable && userBank.has(osjsOpenable.id)) {
+		if (osjsOpenable) {
 			return this.osjsOpenablesOpen(msg, userBank.amount(osjsOpenable.id), osjsOpenable);
 		}
 		const itemID = Items.get(item)?.id;
@@ -175,17 +137,15 @@ export default class extends BotCommand {
 			}
 			return this.botOpenablesOpen(msg, userBank.amount(itemID), itemName);
 		}
+		return msg.channel.send('You have no openable items.');
 	}
 
 	async clueOpen(msg: KlasaMessage, quantity: number, clueTier: ClueTier) {
 		const clueCount = msg.author.bank().amount(clueTier.id);
 		if (msg.flagArgs.master && clueCount > 0) quantity = clueCount;
-
-		if (clueCount < quantity) {
+		if (clueCount < quantity || quantity === 0) {
 			return msg.channel.send(
-				`You don't have enough ${clueTier.name} Caskets to open!\n\n However... ${await this.showAvailable(
-					msg
-				)}`
+				`You don't have enough ${clueTier.name} Caskets to open!\n\nHowever... ${await this.showAvailable(msg)}`
 			);
 		}
 
@@ -291,7 +251,8 @@ export default class extends BotCommand {
 	}
 
 	async osjsOpenablesOpen(msg: KlasaMessage, quantity: number, osjsOpenable: Openable) {
-		if (msg.author.bank().amount(osjsOpenable.id) < quantity) {
+		const openableCount = msg.author.bank().amount(osjsOpenable.id);
+		if (openableCount < quantity || quantity === 0) {
 			return msg.channel.send(
 				`You don't have enough ${osjsOpenable.name} to open!\n\n However... ${await this.showAvailable(msg)}`
 			);
@@ -347,8 +308,8 @@ export default class extends BotCommand {
 					.join(', ')})`
 			);
 		}
-
-		if (msg.author.bank().amount(botOpenable.itemID) < quantity) {
+		const botCount = msg.author.bank().amount(botOpenable.itemID);
+		if (botCount < quantity || quantity === 0) {
 			return msg.channel.send(
 				`You don't have enough ${botOpenable.name} to open!\n\n However... ${await this.showAvailable(msg)}`
 			);
