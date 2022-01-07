@@ -14,6 +14,7 @@ import { promisify } from 'util';
 import { CENA_CHARS, continuationChars, Events, PerkTier, skillEmoji, SupportServer } from './constants';
 import { DefenceGearStat, GearSetupType, GearSetupTypes, GearStat, OffenceGearStat } from './gear/types';
 import { Consumable } from './minions/types';
+import { POHBoosts } from './poh';
 import { ArrayItemsResolved, Skills } from './types';
 import { GroupMonsterActivityTaskOptions, RaidsOptions, TheatreOfBloodTaskOptions } from './types/minions';
 import getUsersPerkTier from './util/getUsersPerkTier';
@@ -420,25 +421,20 @@ export function formatItemBoosts(items: ItemBank[]) {
 	return str.join(', ');
 }
 
-/**
- * Given a list of items, and a bank, it will return a new bank with all items not
- * in the filter removed from the bank.
- * @param itemFilter The array of item IDs to use as the filter.
- * @param bank The bank to filter items from.
- */
-export function filterBankFromArrayOfItems(itemFilter: number[], bank: ItemBank): ItemBank {
-	const returnBank: ItemBank = {};
-	const bankKeys = Object.keys(bank);
+export function formatPohBoosts(boosts: POHBoosts) {
+	const bonusStr = [];
+	const slotStr = [];
 
-	// If there are no items in the filter or bank, just return an empty bank.
-	if (itemFilter.length === 0 || bankKeys.length === 0) return returnBank;
+	for (const [slot, objBoosts] of objectEntries(boosts)) {
+		if (objBoosts === undefined) continue;
+		for (const [name, boostPercent] of objectEntries(objBoosts)) {
+			bonusStr.push(`${boostPercent}% for ${name}`);
+		}
 
-	// For every item in the filter, if its in the bank, add it to the return bank.
-	for (const itemID of itemFilter) {
-		if (bank[itemID]) returnBank[itemID] = bank[itemID];
+		slotStr.push(`${slot.replace(/\b\S/g, t => t.toUpperCase())}: (${bonusStr.join(' or ')})\n`);
 	}
 
-	return returnBank;
+	return slotStr.join(', ');
 }
 
 export function updateBankSetting(client: KlasaClient | KlasaUser, setting: string, bankToAdd: Bank | ItemBank) {
@@ -598,4 +594,12 @@ export function convertAttackStyleToGearSetup(style: OffenceGearStat | DefenceGe
 	}
 
 	return setup;
+}
+
+export function convertBankToPerHourStats(bank: Bank, time: number) {
+	let result = [];
+	for (const [item, qty] of bank.items()) {
+		result.push(`${(qty / (time / Time.Hour)).toFixed(1)}/hr ${item.name}`);
+	}
+	return result;
 }

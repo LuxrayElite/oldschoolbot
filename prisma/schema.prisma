@@ -9,14 +9,14 @@ datasource db {
 
 model Activity {
   id             Int                @default(autoincrement())
-  user_id        String             @db.VarChar(19)
+  user_id        BigInt
   start_date     DateTime           @db.Timestamp(6)
   finish_date    DateTime           @db.Timestamp(6)
   duration       Int
   completed      Boolean
   group_activity Boolean
   type           activity_type_enum
-  channel_id     String             @db.VarChar(19)
+  channel_id     BigInt
   data           Json               @db.Json
 
 
@@ -167,7 +167,6 @@ model Guild {
   tweetchannel      String?  @db.VarChar(19)
   levelUpMessages   String?  @db.VarChar(19)
   staffOnlyChannels String[] @db.VarChar(19)
-  tags              Json[]   @db.Json
 
   @@map("guilds")
 }
@@ -357,9 +356,6 @@ model User {
   premium_balance_tier        Int?
   premium_balance_expiry_date BigInt?
 
-  presents_stolen    Int @default(0)
-  presents_delivered Int @default(0)
-
   temp_cl            Json      @default("{}") @db.Json
   last_temp_cl_reset DateTime? @db.Timestamp(6)
 
@@ -383,7 +379,7 @@ model Webhook {
 
 model XPGain {
   id         Int                 @id @default(autoincrement())
-  user_id    String              @db.VarChar(19)
+  user_id    BigInt
   date       DateTime            @default(now()) @db.Timestamp(6)
   skill      xp_gains_skill_enum
   xp         Int
@@ -461,6 +457,25 @@ model CommandUsage {
   @@map("command_usage")
 }
 
+enum loot_track_type {
+  Monster
+  Minigame
+  Skilling
+}
+
+model LootTrack {
+  id             String          @db.VarChar(32)
+  type           loot_track_type
+  // In minutes
+  total_duration Int
+  total_kc       Int
+  loot           Json            @default("{}") @db.Json
+  cost           Json            @default("{}") @db.Json
+
+  @@id([id, type])
+  @@map("loot_track")
+}
+
 enum command_usage_status {
   Unknown
   Success
@@ -535,7 +550,6 @@ enum activity_type_enum {
   KourendFavour
   Inferno
   TheatreOfBlood
-  Christmas
 }
 
 enum xp_gains_skill_enum {

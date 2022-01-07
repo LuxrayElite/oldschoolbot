@@ -135,7 +135,6 @@ export default class extends BotCommand {
 		if (msg.flagArgs.master !== undefined) {
 			for (let i = 0; i < quantity; i++) {
 				loot.add(clueTier.table.open());
-
 				// Master scroll ID
 				if (loot.has(19_835)) {
 					actualQuantity = i + 1;
@@ -200,7 +199,7 @@ export default class extends BotCommand {
 		msg.author.incrementOpenableScore(clueTier.id, actualQuantity);
 
 		if (mimicNumber > 0) {
-			msg.author.incrementMonsterScore(MIMIC_MONSTER_ID, mimicNumber);
+			await msg.author.incrementMonsterScore(MIMIC_MONSTER_ID, mimicNumber);
 		}
 
 		await msg.author.addItemsToBank(loot, true);
@@ -228,7 +227,7 @@ export default class extends BotCommand {
 		}
 		await msg.author.removeItemsFromBank(new Bank().add(osjsOpenable.id, quantity));
 
-		const loot = osjsOpenable.open(quantity, {});
+		const loot = new Bank(osjsOpenable.open(quantity, {}));
 		const score = msg.author.getOpenableScore(osjsOpenable.id) + quantity;
 		this.client.emit(
 			Events.Log,
@@ -236,10 +235,10 @@ export default class extends BotCommand {
 		);
 
 		msg.author.incrementOpenableScore(osjsOpenable.id, quantity);
-		const previousCL = msg.author.settings.get(UserSettings.CollectionLogBank);
+		const previousCL = msg.author.cl();
 		await msg.author.addItemsToBank(loot, true);
-		if (typeof loot[COINS_ID] === 'number') {
-			updateGPTrackSetting(this.client, ClientSettings.EconomyStats.GPSourceOpen, loot[COINS_ID]);
+		if (loot.has(COINS_ID)) {
+			updateGPTrackSetting(this.client, ClientSettings.EconomyStats.GPSourceOpen, loot.amount(COINS_ID));
 		}
 
 		return msg.channel.sendBankImage({
@@ -299,7 +298,6 @@ export default class extends BotCommand {
 		}
 
 		const previousCL = msg.author.settings.get(UserSettings.CollectionLogBank);
-
 		await msg.author.addItemsToBank(loot.values(), true, false);
 
 		msg.author.incrementOpenableScore(botOpenable.itemID, quantity);
@@ -308,7 +306,7 @@ export default class extends BotCommand {
 		}
 
 		return msg.channel.sendBankImage({
-			bank: loot.values(),
+			bank: loot,
 			content: `You have opened the ${botOpenable.name.toLowerCase()} ${(
 				score + quantity
 			).toLocaleString()} times.`,

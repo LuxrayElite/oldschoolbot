@@ -1,5 +1,5 @@
 import { FormattedCustomEmoji } from '@sapphire/discord-utilities';
-import { MessageButton, MessageEmbed } from 'discord.js';
+import { MessageAttachment, MessageButton, MessageEmbed } from 'discord.js';
 import { chunk, randArrItem, Time } from 'e';
 import { CommandStore, KlasaMessage } from 'klasa';
 import { Bank, Monsters } from 'oldschooljs';
@@ -22,6 +22,7 @@ import { minionNotBusy, requiresMinion } from '../../lib/minions/decorators';
 import { autoFarm } from '../../lib/minions/functions/autoFarm';
 import { blowpipeCommand } from '../../lib/minions/functions/blowpipeCommand';
 import { cancelTaskCommand } from '../../lib/minions/functions/cancelTaskCommand';
+import { dataCommand } from '../../lib/minions/functions/dataCommand';
 import { degradeableItemsCommand } from '../../lib/minions/functions/degradeableItemsCommand';
 import { equipPet } from '../../lib/minions/functions/equipPet';
 import { pastActivities } from '../../lib/minions/functions/pastActivities';
@@ -80,7 +81,8 @@ const subCommands = [
 	'tempcl',
 	'blowpipe',
 	'bp',
-	'charge'
+	'charge',
+	'data'
 ];
 
 export default class MinionCommand extends BotCommand {
@@ -169,6 +171,22 @@ export default class MinionCommand extends BotCommand {
 
 	async train(msg: KlasaMessage, [input]: [string | undefined]) {
 		return trainCommand(msg, input);
+	}
+
+	async data(msg: KlasaMessage, [input = '']: [string | undefined]) {
+		if (msg.author.perkTier < PerkTier.Four) {
+			return msg.channel.send('Sorry, you need to be a Tier 3 Patron to use this command.');
+		}
+		const result = await dataCommand(msg, input);
+		if ('bank' in result) {
+			return msg.channel.sendBankImage({
+				title: result.title,
+				bank: result.bank,
+				content: result.content
+			});
+		}
+		const output = Buffer.isBuffer(result) ? { files: [new MessageAttachment(result)] } : result;
+		return msg.channel.send(output);
 	}
 
 	async lapcounts(msg: KlasaMessage) {
@@ -390,9 +408,9 @@ Type \`confirm\` if you understand the above information, and want to become an 
 				await prisma.slayerTask.deleteMany({ where: { user_id: msg.author.id } });
 				await prisma.playerOwnedHouse.delete({ where: { user_id: msg.author.id } });
 				await prisma.minigame.delete({ where: { user_id: msg.author.id } });
-				await prisma.xPGain.deleteMany({ where: { user_id: msg.author.id } });
+				await prisma.xPGain.deleteMany({ where: { user_id: BigInt(msg.author.id) } });
 				await prisma.newUser.delete({ where: { id: msg.author.id } });
-				await prisma.activity.deleteMany({ where: { user_id: msg.author.id } });
+				await prisma.activity.deleteMany({ where: { user_id: BigInt(msg.author.id) } });
 			} catch (_) {}
 
 			await msg.author.settings.update([
