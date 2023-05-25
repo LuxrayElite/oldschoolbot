@@ -107,6 +107,13 @@ export const runecraftCommand: OSBMahojiCommand = {
 		if (!usestams && !runeObj.stams) {
 			usestams = true;
 		}
+		if (rune === 'blood') {
+			const hasBloodReqs = user.hasSkillReqs(sinsOfTheFatherSkillRequirements);
+			if (!hasBloodReqs) {
+				return `To runecraft ${rune}, you need ${formatSkillRequirements(sinsOfTheFatherSkillRequirements)}.`;
+			}
+		}
+
 
 		const quantityPerEssence = calcMaxRCQuantity(runeObj, user);
 
@@ -310,8 +317,7 @@ export const runecraftCommand: OSBMahojiCommand = {
 			daeyaltEssence: daeyalt_essence,
 			duration,
 			imbueCasts,
-			type: 'Runecraft',
-			bloodEssence
+			type: 'Runecraft'
 		});
 
 		let response = `${user.minionName} is now turning ${quantity}x`;
